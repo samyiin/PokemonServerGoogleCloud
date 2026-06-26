@@ -1,0 +1,18 @@
+services:
+  nginx-nds:
+    build: .
+    container_name: nginx-nds-gateway
+    restart: unless-stopped
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    networks:
+      - pokemon_net
+
+networks:
+  pokemon_net:
+    external: true
+    name: pokemon_net
