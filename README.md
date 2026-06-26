@@ -34,7 +34,28 @@ On the Google Cloud VM:
 - Ubuntu/Debian (tested workflow)
 - External (public) IP — note this down; the NDS uses it as its DNS server
 - [Docker](https://docs.docker.com/engine/install/ubuntu/) and Docker Compose plugin installed
-- Repo cloned on the VM, e.g. `~/PokemonServerGoogleCloud`
+- Repo cloned on the VM with submodules initialized (see below)
+
+### Clone the repo (includes dwc backend submodule)
+
+The dwc backend lives in a git submodule at `backend_servers/dwc_network_server_emulator`. Clone with:
+
+```bash
+git clone --recurse-submodules git@github.com:samyiin/PokemonServerGoogleCloud.git ~/PokemonServerGoogleCloud
+```
+
+If you already cloned without submodules:
+
+```bash
+cd ~/PokemonServerGoogleCloud
+git submodule update --init --recursive
+```
+
+Verify before building containers:
+
+```bash
+test -f backend_servers/dwc_network_server_emulator/master_server.py && echo "dwc source OK"
+```
 
 **GCP firewall** — allow inbound traffic to the VM for:
 
@@ -153,6 +174,7 @@ docker ps   # expect container "dwc" running
 ### Step 3 — nginx reverse proxy
 
 ```bash
+# build only once is enough
 docker compose -f containers/nginx_container/docker-compose.yml build
 docker compose -f containers/nginx_container/docker-compose.yml up -d
 docker ps   # expect "nginx-nds-gateway" and "dwc"
@@ -220,6 +242,8 @@ After DNS is set to your VM IP:
 
 | Symptom | Check |
 |---|---|
+| `can't open file 'master_server.py'` / empty `backend_servers/dwc_network_server_emulator` | Run `git submodule update --init --recursive`, then rebuild dwc |
+| nginx `host not found in upstream "dwc:9000"` | dwc must be running first; fix dwc source, then `docker compose ... dwc ... up --build -d` |
 | NDS can’t connect online | NDS DNS = VM public IP; GCP firewall allows UDP 53 |
 | DNS resolves but no HTTPS | `docker ps`; port 443 published on nginx; certs in `certs/` |
 | HTTPS works, login fails | `docker logs dwc`; dwc running on `pokemon_net` |

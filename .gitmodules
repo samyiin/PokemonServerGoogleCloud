@@ -1,0 +1,3 @@
+[submodule "backend_servers/dwc_network_server_emulator"]
+	path = backend_servers/dwc_network_server_emulator
+	url = https://github.com/samyiin/dwc_network_server_emulator.git
