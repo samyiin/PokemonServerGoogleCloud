@@ -1,3 +1,6 @@
 [submodule "backend_servers/dwc_network_server_emulator"]
 	path = backend_servers/dwc_network_server_emulator
 	url = https://github.com/samyiin/dwc_network_server_emulator.git
+[submodule "backend_servers/pkmn-classic-framework"]
+	path = backend_servers/pkmn-classic-framework
+	url = https://github.com/samyiin/pkmn-classic-framework.git
