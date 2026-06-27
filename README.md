@@ -57,6 +57,14 @@ Verify before building containers:
 test -f backend_servers/dwc_network_server_emulator/master_server.py && echo "dwc source OK"
 ```
 
+### Sync remote changes (VM)
+
+```bash
+cd ~/PokemonServerGoogleCloud
+git pull
+git submodule update --init --recursive
+```
+
 **GCP firewall** — allow inbound traffic to the VM for:
 
 | Port | Protocol | Purpose |
@@ -215,9 +223,9 @@ curl -k --resolve nas.nintendowifi.net:443:VM_IP https://nas.nintendowifi.net/
 
 ## Activity monitor (while testing NDS)
 
-Unified live view of GameSpy/DNS port traffic (filtered to your NDS/hotspot IP) plus full dwc and nginx container logs. Output is shown on screen and saved under `test/activity_monitor/runlogs/`.
+Unified live view of GameSpy/DNS port traffic plus full dwc and nginx container logs. Output is shown on screen and saved under `test/activity_monitor/runlogs/`.
 
-On the VM, pass your **hotspot public IP** (changes each session — find it on your phone or from `tcpdump` before filtering):
+On the VM, pass your **hotspot public IP** (changes each session — used to filter DNS/HTTP traffic only):
 
 ```bash
 cd ~/PokemonServerGoogleCloud/test/activity_monitor
@@ -228,7 +236,7 @@ Streams:
 
 | Prefix | Source | Filter |
 |---|---|---|
-| `[ports]` | `tcpdump` on VM NIC | Your `CLIENT_IP` + ports in [test/activity_monitor/ports.txt](test/activity_monitor/ports.txt) |
+| `[ports]` | `tcpdump` on VM NIC | `CLIENT_IP` on TCP 80/443 and UDP 53 only; GameSpy ports (see [ports.txt](test/activity_monitor/ports.txt)) capture all hosts |
 | `[dwc]` | `docker logs -f dwc` | None |
 | `[nginx]` | `docker logs -f nginx-nds-gateway` | None |
 

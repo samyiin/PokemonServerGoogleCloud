@@ -3,16 +3,10 @@
 # Run on the VM while testing NDS connectivity.
 #
 # Verified ports (README + docker-compose):
-#   TCP  443      nginx HTTPS (NAS login, DLC, stats HTTP)
-#   TCP  29900     dwc GPCM profile
-#   TCP  29901     dwc player search (GPSP)
-#   TCP  29920     dwc gamestats
-#   UDP  53        DNS sinkhole (iptables redirect to dnsmasq :5353)
-#   UDP  27900     dwc GameSpy QR / availability
-#   UDP  27901     dwc NAT negotiation
-#   UDP  28910     dwc server browser
-#
-# Not in this monitor (HTTP only, no GameSpy): TCP 80 (nginx plain HTTP).
+#   TCP  80, 443   nginx HTTP(S) — CLIENT_IP filter in tcpdump
+#   UDP  53         DNS sinkhole — CLIENT_IP filter in tcpdump
+#   TCP  29900, 29901, 29920   dwc GameSpy — all hosts
+#   UDP  27900, 27901, 28910   dwc GameSpy — all hosts
 #
 # Usage:
 #   ./monitor.sh <CLIENT_IP>
@@ -62,8 +56,11 @@ readonly INTERFACE="${INTERFACE:-$(ip route get 8.8.8.8 2>/dev/null | awk '{for 
 readonly LOG_TAIL="${LOG_TAIL:-30}"
 readonly SKIP_TCPDUMP="${SKIP_TCPDUMP:-0}"
 
-readonly TCP_PORTS=(443 29900 29901 29920)
-readonly UDP_PORTS=(53 27900 27901 28910)
+# tcpdump: CLIENT_IP filter only on DNS + HTTP(S); GameSpy ports capture all hosts.
+readonly TCP_PORTS_CLIENT_FILTER=(80 443)
+readonly UDP_PORTS_CLIENT_FILTER=(53)
+readonly TCP_PORTS_ALL=(29900 29901 29920)
+readonly UDP_PORTS_ALL=(27900 27901 28910)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 RUNLOGS_DIR="${SCRIPT_DIR}/runlogs"
@@ -92,23 +89,33 @@ prefix_lines() {
   done
 }
 
+port_clauses() {
+  local proto="$1"
+  shift
+  local port result="" first=1
+  for port in "$@"; do
+    if (( first )); then
+      result="${proto} port ${port}"
+      first=0
+    else
+      result+=" or ${proto} port ${port}"
+    fi
+  done
+  printf '%s' "$result"
+}
+
 build_tcpdump_filter() {
-  local parts=()
-  local port
+  local client_tcp client_udp client_ports all_tcp all_udp all_ports
 
-  for port in "${TCP_PORTS[@]}"; do
-    parts+=("tcp port ${port}")
-  done
-  for port in "${UDP_PORTS[@]}"; do
-    parts+=("udp port ${port}")
-  done
+  client_tcp="$(port_clauses tcp "${TCP_PORTS_CLIENT_FILTER[@]}")"
+  client_udp="$(port_clauses udp "${UDP_PORTS_CLIENT_FILTER[@]}")"
+  client_ports="${client_tcp} or ${client_udp}"
 
-  local port_filter="${parts[0]}"
-  local i
-  for ((i = 1; i < ${#parts[@]}; i++)); do
-    port_filter+=" or ${parts[$i]}"
-  done
-  printf 'host %s and (%s)' "$CLIENT_IP" "$port_filter"
+  all_tcp="$(port_clauses tcp "${TCP_PORTS_ALL[@]}")"
+  all_udp="$(port_clauses udp "${UDP_PORTS_ALL[@]}")"
+  all_ports="${all_tcp} or ${all_udp}"
+
+  printf '(host %s and (%s)) or (%s)' "$CLIENT_IP" "$client_ports" "$all_ports"
 }
 
 check_prereqs() {
@@ -132,11 +139,13 @@ check_prereqs() {
 
 print_banner() {
   printf '%b=== Pokemon server activity monitor ===%b\n' "$BOLD" "$NC"
-  printf 'client ip: %s (ports filter only)\n' "$CLIENT_IP"
+  printf 'client ip: %s (tcpdump filter on 53, 80, 443 only)\n' "$CLIENT_IP"
   printf 'run log: %s\n' "$LOG_FILE"
   printf 'interface: %s\n' "$INTERFACE"
-  printf 'tcp ports: %s\n' "${TCP_PORTS[*]}"
-  printf 'udp ports: %s\n' "${UDP_PORTS[*]}"
+  printf 'tcp ports (client filter): %s\n' "${TCP_PORTS_CLIENT_FILTER[*]}"
+  printf 'udp ports (client filter): %s\n' "${UDP_PORTS_CLIENT_FILTER[*]}"
+  printf 'tcp ports (all hosts): %s\n' "${TCP_PORTS_ALL[*]}"
+  printf 'udp ports (all hosts): %s\n' "${UDP_PORTS_ALL[*]}"
   printf 'containers: %s, %s (unfiltered)\n' "$DWC_CONTAINER" "$NGINX_CONTAINER"
   printf '%sCtrl+C to stop%s\n\n' "$CYAN" "$NC"
 }
