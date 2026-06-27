@@ -1,0 +1,24 @@
+# Verified against README.md (GCP firewall), dwc_container/docker-compose.yml,
+# and docs/containers/network_explanation.md — 2026-06-27.
+#
+# Monitored by monitor.sh (default):
+#
+# TCP
+#   443     nginx HTTPS — NAS login, DLC, gamestats HTTP (via reverse proxy)
+#   29900   dwc GPCM profile (gpcm.gs.nintendowifi.net)
+#   29901   dwc player search / GPSP (gpsp.gs.nintendowifi.net)
+#   29920   dwc GameSpy gamestats
+#
+# UDP
+#   53      DNS sinkhole (host dnsmasq; PREROUTING redirect 53 → 5353)
+#   27900   dwc GameSpy QR / availability
+#   27901   dwc NAT negotiation
+#   28910   dwc server browser
+#
+# Published but NOT in default monitor:
+#   80/tcp  nginx plain HTTP (same upstreams as 443, less common on NDS)
+#
+# dwc HTTP ports (9000, 9002, 9003, 8000) are internal to Docker network only.
+#
+# monitor.sh filters [ports] tcpdump to CLIENT_IP; dwc/nginx logs are unfiltered.
+# Each run appends to test/activity_monitor/runlogs/<timestamp>_<CLIENT_IP>.log

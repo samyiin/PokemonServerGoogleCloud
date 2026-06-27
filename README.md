@@ -152,13 +152,12 @@ If missing, generate per [reverse_proxy/README.md](reverse_proxy/README.md) and 
 From the repo root on the VM:
 
 ### Step 1 — DNS sinkhole
-
+Technically it starts by itself, if not
 ```bash
-sudo /usr/local/bin/update-nds-ip.sh   # refresh public IP in hosts file (if VM IP changed)
 sudo systemctl restart dnsmasq
 ```
 
-Re-apply iptables redirect if you only added it to `.bashrc` and have rebooted:
+If you only added it to `.bashrc` then no need this either:
 
 ```bash
 sudo iptables -t nat -A PREROUTING -i ens4 -p udp --dport 53 -j REDIRECT --to-ports 5353
@@ -175,8 +174,7 @@ docker ps   # expect container "dwc" running
 
 ```bash
 # build only once is enough
-docker compose -f containers/nginx_container/docker-compose.yml build
-docker compose -f containers/nginx_container/docker-compose.yml up -d
+docker compose -f containers/nginx_container/docker-compose.yml up --build -d
 docker ps   # expect "nginx-nds-gateway" and "dwc"
 ```
 
@@ -212,6 +210,36 @@ From your laptop (replace `VM_IP`):
 nc -zu -v -w 2 VM_IP 53
 curl -k --resolve nas.nintendowifi.net:443:VM_IP https://nas.nintendowifi.net/
 ```
+
+---
+
+## Activity monitor (while testing NDS)
+
+Unified live view of GameSpy/DNS port traffic (filtered to your NDS/hotspot IP) plus full dwc and nginx container logs. Output is shown on screen and saved under `test/activity_monitor/runlogs/`.
+
+On the VM, pass your **hotspot public IP** (changes each session — find it on your phone or from `tcpdump` before filtering):
+
+```bash
+cd ~/PokemonServerGoogleCloud/test/activity_monitor
+./monitor.sh 203.0.113.42
+```
+
+Streams:
+
+| Prefix | Source | Filter |
+|---|---|---|
+| `[ports]` | `tcpdump` on VM NIC | Your `CLIENT_IP` + ports in [test/activity_monitor/ports.txt](test/activity_monitor/ports.txt) |
+| `[dwc]` | `docker logs -f dwc` | None |
+| `[nginx]` | `docker logs -f nginx-nds-gateway` | None |
+
+Options:
+
+```bash
+INTERFACE=ens4 ./monitor.sh 203.0.113.42   # GCP NIC if auto-detect is wrong
+SKIP_TCPDUMP=1 ./monitor.sh 203.0.113.42    # container logs only (no sudo)
+```
+
+Requires `tcpdump` (`sudo apt install tcpdump`). Ctrl+C stops the monitor; the run log file path is printed at startup.
 
 ---
 
